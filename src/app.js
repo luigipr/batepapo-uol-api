@@ -42,6 +42,8 @@ app.post("/participants", async (req, res) => {
     }
 })
 
+
+
 app.get("/participants", async (req, res) => {    
     try {   
         const participants = db.collection("participants").find({}).toArray;
@@ -51,24 +53,33 @@ app.get("/participants", async (req, res) => {
     }
 })
 
+
+
 app.post("/messages", async (req , res) => {
-    const {to, text, type} = req.body
-    const from = req.headers.user
-
-    if (!to || !text || type !== 'message' || type !== 'private_message' || !from ){
-        return res.sendStatus(422)
+    const {to, text, type} = req.body;
+    const from = req.headers.user;
+    try {
+    if (!to || !text || type !== 'message' || type !== 'private_message'){
+        return res.sendStatus(422);
     }
-
+    const res = await db.collection("participants").findOne({from});
+    if (res) { return sendStatus(422)}
     const time = (dayjs().locale('pt-br').format('HH:mm:ss'));
 
     const message = {
         from, to, text, type, time
     }
+    await db.collection("messages").insertOne(message);
+    return sendStatus(201);
+    } catch (err) {
+        return res.sendStatus(404)
+    }
 
 })
 
-app.get("/messages" , (req,res) => {
-    const user = req.headers.user;
+app.get("/messages" , async (req,res) => {
+    
+    
 
 })
 
