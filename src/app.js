@@ -47,9 +47,9 @@ app.post("/participants", async (req, res) => {
         await db.collection("participants").insertOne({ name: name, lastStatus: Date.now() })
         //salvar a mensagem de entrar na sala
         await db.collection("messages").insertOne(message)
-        return sendStatus(201)
-    } catch (err) {
-        return res.sendStatus(500)
+        return res.sendStatus(201)
+    } catch (err) {       
+        return res.status(500).send(console.log(err))
     }
 })
 
@@ -57,10 +57,10 @@ app.post("/participants", async (req, res) => {
 
 app.get("/participants", async (req, res) => {    
     try {   
-        const participants = db.collection("participants").find({}).toArray();
+        const participants = await db.collection("participants").find({}).toArray();
         res.status(200).send(participants)
     } catch (err) {
-        res.status(500)
+        return res.status(500).send(console.log(err))
     }
 })
 
@@ -69,55 +69,52 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req , res) => {
     const {to, text, type} = req.body;
     const user = req.headers.user;
+    const time = (dayjs().format('HH:mm:ss'))
+    console.log(user)
+    console.log(time)
+    console.log(to, text, type)
 
-    if (!to || !text || type !== 'message' || type !== 'private_message') return res.sendStatus(422);
+    if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status') || !user) return res.sendStatus(422);
+    const response = await db.collection("participants").findOne({ name: user});
+    console.log(response)
+    if (!response) return res.status(409).send(err => console.log(err))
     
-    try {
-    
-    const res = await db.collection("participants").findOne({ name: user.name});
-    if (res) return sendStatus(422)
-
-    const time = (dayjs().locale('pt-br').format('HH:mm:ss'));
-
     const message = {
-        from, to, text, type, time
+        from: user, to: to, text: text, type: type, time: time
     }
+    console.log(message)
+
+    try {   
     await db.collection("messages").insertOne(message);
-    return sendStatus(201);
+    return res.sendStatus(201);
+
     } catch (err) {
-        return res.sendStatus(500)
+        return res.status(500).send(console.log(err))
     }
 
 })
 
-app.get("/messages" , async (req,res) => {
+app.get("/messages?:limit" , async (req,res) => {
     const user = req.headers.user
-
-    try {
-    const messages = await db.collection("messages").find( { $or: [{to: "Todos"}, {from: user.name}, {to: user.name}]}).toArray();
-    const listMessages = messages.reverse();
-    res.status(200).send(listMessages)
-    } catch (err) {
-        return res.sendStatus(500)
-    }
-
-})
-
-app.get("/messages/:limit",async (req, res) => {
-    const limit = req.params.limit
+    const limit = req.query.limit
+    console.log(user)
+    console.log(limit)
     
-    if (!limit) {
-        const messages = await db.collection("messages").find({}).toArray();
-        return res.status(200).send(messages)
-    }
-
     try {
-    const messages = await db.collection("messages").find().toArray();
-    const limitMessages = messages.slice(0, limit)
-    return res.status(200).send(limitMessages)
-    } catch {
-        return res.sendStatus(500)
+        const resp = await db.collection("participants").findOne({ name: user })
+        if (!resp) return res.status(409).send(err => console.log(err))
+        const messages = await db.collection("messages").find( { $or: [{to: "Todos"}, {from: user}, {to: user}]}).toArray();
+        if ((limit && limit <= 0 )|| (limit && isNaN(limit))) return res.sendStatus(422)
+        if (!limit) {res.status(200).send(messages.reverse())}
+        return res.status(200).send(messages.reverse().slice(0, limit))
+        } catch (err) {
+            return res.status(500).send(console.log(err))
+        }
     }
-})
+)
+
+
+
+
 
 app.listen(process.env.PORT, console.log(`Servidor rodando na porta ${process.env.PORT}`))
