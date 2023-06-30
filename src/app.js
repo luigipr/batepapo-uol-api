@@ -11,6 +11,8 @@ app.use(express.json())
 dotenv.config();
 
 
+
+
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 try {
 	await mongoClient.connect()
@@ -71,7 +73,7 @@ app.post("/messages", async (req , res) => {
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status') || !user) return res.sendStatus(422);
     const response = await db.collection("participants").findOne({ name: user});
     console.log(response)
-    if (!response) return res.status(422).send(err => console.log(err))
+    if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
     const message = {
         from: user, to: to, text: text, type: type, time: time
@@ -83,7 +85,7 @@ app.post("/messages", async (req , res) => {
     return res.sendStatus(201);
 
     } catch (err) {
-        return res.status(500).send(console.log(err))
+        return res.status(422).send(console.log(err))
     }
 
 })
@@ -113,10 +115,12 @@ app.post("/status", async (req, res) => {
     if (!user) return res.sendStatus(404);
 
     try{  
-        db.collection("participans").updateOne({ name: user }, { $set: { lastStatus : Date.now()} })
+        const response = await db.collection("participants").findOne({ name: user })
+        if (!response) return res.sendStatus(404)
+        await db.collection("participans").updateOne({ name: user }, { $set: { lastStatus : Date.now()} })
         res.sendStatus(200)
     } catch (err) {
-        return res.status(500).send(console.log(err));
+        return res.status(404).send(console.log(err));
     }
 })
 
