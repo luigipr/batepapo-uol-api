@@ -10,12 +10,6 @@ app.use(cors())
 app.use(express.json())
 dotenv.config();
 
-let hour
-
-setInterval(() => {
-    hour = dayjs().format("HH:mm:ss")
-
-}, 1)
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 try {
@@ -77,7 +71,7 @@ app.post("/messages", async (req , res) => {
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status') || !user) return res.sendStatus(422);
     const response = await db.collection("participants").findOne({ name: user});
     console.log(response)
-    if (!response) return res.status(409).send(err => console.log(err))
+    if (!response) return res.status(422).send(err => console.log(err))
     
     const message = {
         from: user, to: to, text: text, type: type, time: time
@@ -101,8 +95,8 @@ app.get("/messages?:limit" , async (req,res) => {
     console.log(limit)
     
     try {
-        const resp = await db.collection("participants").findOne({ name: user })
-        if (!resp) return res.status(409).send(err => console.log(err))
+        const response = await db.collection("participants").findOne({ name: user })
+        if (!response) return res.status(409).send(err => console.log(err))
         const messages = await db.collection("messages").find( { $or: [{to: "Todos"}, {from: user}, {to: user}]}).toArray();
         if ((limit && limit <= 0 )|| (limit && isNaN(limit))) return res.sendStatus(422)
         if (!limit) {res.status(200).send(messages.reverse())}
@@ -113,7 +107,18 @@ app.get("/messages?:limit" , async (req,res) => {
     }
 )
 
+app.post("/status", async (req, res) => {
+    const user = req.headers.user
+    console.log(user)
+    if (!user) return res.sendStatus(404);
 
+    try{  
+        db.collection("participans").updateOne({ name: user }, { $set: { lastStatus : Date.now()} })
+        res.sendStatus(200)
+    } catch (err) {
+        return res.status(500).send(console.log(err));
+    }
+})
 
 
 
