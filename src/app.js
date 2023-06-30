@@ -1,8 +1,9 @@
 import  express  from "express";
 import cors from 'cors';
 import dayjs from "dayjs";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv"
+
 
 
 const app = express()
@@ -11,7 +12,27 @@ app.use(express.json())
 dotenv.config();
 
 
+let time
 
+setInterval(() => {
+    time = dayjs().format("HH:mm:ss")
+
+}, 1000)
+
+setInterval(deleteUsers, 15000)
+
+async function deleteUsers() {
+    const participants = await db.collection("/participants").find().toArray();
+
+
+    const users = participants.map(participant => {participant.lastStatus < time - dayjs().subtract(10, 'seconds')})
+    try{
+
+    } catch {
+
+    }
+
+}
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 try {
@@ -27,7 +48,7 @@ app.post("/participants", async (req, res) => {
     console.log(name)
     if(!name || typeof name !== 'string') {return res.sendStatus(422)}
     //salvar participante na collection de participantes
-    const time = (dayjs().format('HH:mm:ss'))
+    //const time = (dayjs().format('HH:mm:ss'))
     const message = { 
         from: name,
         to: 'Todos',
@@ -65,7 +86,7 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req , res) => {
     const {to, text, type} = req.body;
     const user = req.headers.user;
-    const time = (dayjs().format('HH:mm:ss'))
+    //const time = (dayjs().format('HH:mm:ss'))
     console.log(user)
     console.log(time)
     console.log(to, text, type)
@@ -117,7 +138,7 @@ app.post("/status", async (req, res) => {
     try{  
         const response = await db.collection("participants").findOne({ name: user })
         if (!response) return res.sendStatus(404)
-        await db.collection("participans").updateOne({ name: user }, { $set: { lastStatus : Date.now()} })
+        await db.collection("participants").updateOne({ name: user }, { $set: { lastStatus : Date.now()} })
         res.sendStatus(200)
     } catch (err) {
         return res.status(404).send(console.log(err));
@@ -125,5 +146,37 @@ app.post("/status", async (req, res) => {
 })
 
 
+app.delete("/messages/:id", async (req,res) => {
+    const user = req.headers.user;
+    const id = req.params;
+    try {
+    const response = await db.collection("participants").findOne({ name: user })
+    if (!response) return res.sendStatus(401)
+    const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
+    if (message.deletedCount === 0) return res.status(404).send("Essa mensagem não existe!")
+
+    res.status(204).send("Receita deletada com sucesso!")
+    } catch (err) {
+        return res.status(404).send(console.log(err));
+    }
+})
+
+app.put("/messages/:id", async (req, res) => {
+    const from = req.headers.user;
+    const {to, text, type} = req.body;
+    const id = req.params;
+
+    const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+    if (!to  || !text || type !== 'message' || type !== 'private_message' || !response) return res.sendStatus(422)
+    if (response.from !== from) return res.sendStatus(404)
+    
+    try {
+        const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { text: text } })
+        if (result.modifiedCount === 0) return res.status(404).send("Esta mensagem não existe")
+        res.status(200).send("usuario editado com sucesso")
+    } catch (err) {
+        return res.status(404).send(console.log(err));
+    }
+})
 
 app.listen(process.env.PORT, console.log(`Servidor rodando na porta ${process.env.PORT}`))
