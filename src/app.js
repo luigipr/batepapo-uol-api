@@ -12,27 +12,25 @@ app.use(express.json())
 dotenv.config();
 
 
-let time
 
-setInterval(() => {
-    time = dayjs().format("HH:mm:ss")
+setInterval(deleteUsers, 15000)
 
-}, 1000)
+async function deleteUsers() {
 
-//setInterval(deleteUsers, 15000)
-
-// async function deleteUsers() {
-//     const participants = await db.collection("/participants").find().toArray();
+    const participants = await db.collection("/participants").find().toArray();
+    const time = (dayjs().format('HH:mm:ss'))
 
 
-//     const users = participants.map(participant => {participant.lastStatus < time - dayjs().subtract(10, 'seconds')})
-//     try{
-
-//     } catch {
-
-//     }
-
-// }
+    participants.forEach( async participant => {
+        if (Date.now() - participant.lastStatus > 10000) {
+            await db.collection("participants").deleteOne({ _id: ObjectId(participant._id) })
+            await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
+            text: 'saia sala...',
+            type: 'status',
+            time: time})
+        }
+    })
+}
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 try {
@@ -48,13 +46,13 @@ app.post("/participants", async (req, res) => {
     console.log(name)
     if(!name || typeof name !== 'string') {return res.sendStatus(422)}
     //salvar participante na collection de participantes
-    const mtime = (dayjs().format('HH:mm:ss'))
+    const time = (dayjs().format('HH:mm:ss'))
     const message = { 
         from: name,
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
-        time: mtime
+        time: time
 }
     try {
         const user = await db.collection("participants").findOne({name: name});
@@ -86,7 +84,7 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req , res) => {
     const {to, text, type} = req.body;
     const user = req.headers.user;
-    const mtime = (dayjs().format('HH:mm:ss'))
+    const time = (dayjs().format('HH:mm:ss'))
     console.log(user)
     console.log(time)
     console.log(to, text, type)
@@ -97,7 +95,7 @@ app.post("/messages", async (req , res) => {
     if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
     const message = {
-        from: user, to: to, text: text, type: type, time: mtime
+        from: user, to: to, text: text, type: type, time: time
     }
     console.log(message)
 
@@ -149,10 +147,13 @@ app.post("/status", async (req, res) => {
 app.delete("/messages/:id", async (req,res) => {
     const user = req.headers.user;
     const id = req.params;
-    try {
+    try {    
     const response = await db.collection("participants").findOne({ name: user })
+
     if (!response) return res.sendStatus(401)
+    if (response.from !== from) return res.sendStatus(401)
     const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
+    if (message.from !== user) return res.sendStatus(401)
     if (message.deletedCount === 0) return res.status(404).send("Essa mensagem não existe!")
 
     res.status(200).send("Receita deletada com sucesso!")
@@ -167,9 +168,9 @@ app.put("/messages/:id", async (req, res) => {
     const id = req.params;
 
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
-    if (!to  || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
-    if (response.from !== from || !response) return res.sendStatus(404)
-    
+    if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
+    if (response.from !== from) return res.sendStatus(401)
+    if (!response) return res.sendStatus(404)
     try {
         const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { to, text, type } })
         if (result.matchedCount === 0) return res.status(404).send("Esta mensagem não existe")
