@@ -19,20 +19,20 @@ setInterval(() => {
 
 }, 1000)
 
-setInterval(deleteUsers, 15000)
+//setInterval(deleteUsers, 15000)
 
-async function deleteUsers() {
-    const participants = await db.collection("/participants").find().toArray();
+// async function deleteUsers() {
+//     const participants = await db.collection("/participants").find().toArray();
 
 
-    const users = participants.map(participant => {participant.lastStatus < time - dayjs().subtract(10, 'seconds')})
-    try{
+//     const users = participants.map(participant => {participant.lastStatus < time - dayjs().subtract(10, 'seconds')})
+//     try{
 
-    } catch {
+//     } catch {
 
-    }
+//     }
 
-}
+// }
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 try {
@@ -48,13 +48,13 @@ app.post("/participants", async (req, res) => {
     console.log(name)
     if(!name || typeof name !== 'string') {return res.sendStatus(422)}
     //salvar participante na collection de participantes
-    //const time = (dayjs().format('HH:mm:ss'))
+    const mtime = (dayjs().format('HH:mm:ss'))
     const message = { 
         from: name,
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
-        time: time
+        time: mtime
 }
     try {
         const user = await db.collection("participants").findOne({name: name});
@@ -86,7 +86,7 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req , res) => {
     const {to, text, type} = req.body;
     const user = req.headers.user;
-    //const time = (dayjs().format('HH:mm:ss'))
+    const mtime = (dayjs().format('HH:mm:ss'))
     console.log(user)
     console.log(time)
     console.log(to, text, type)
@@ -97,7 +97,7 @@ app.post("/messages", async (req , res) => {
     if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
     const message = {
-        from: user, to: to, text: text, type: type, time: time
+        from: user, to: to, text: text, type: type, time: mtime
     }
     console.log(message)
 
@@ -172,8 +172,8 @@ app.put("/messages/:id", async (req, res) => {
     
     try {
         const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { text: text } })
-        if (result.modifiedCount === 0) return res.status(404).send("Esta mensagem não existe")
-        res.status(200).send("usuario editado com sucesso")
+        if (result.matchedCount === 0) return res.status(404).send("Esta mensagem não existe")
+        res.status(200).send("mensagem editada com sucesso")
     } catch (err) {
         return res.status(404).send(console.log(err));
     }
