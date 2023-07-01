@@ -155,7 +155,7 @@ app.delete("/messages/:id", async (req,res) => {
     const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
     if (message.deletedCount === 0) return res.status(404).send("Essa mensagem não existe!")
 
-    res.status(204).send("Receita deletada com sucesso!")
+    res.status(200).send("Receita deletada com sucesso!")
     } catch (err) {
         return res.status(404).send(console.log(err));
     }
@@ -167,11 +167,11 @@ app.put("/messages/:id", async (req, res) => {
     const id = req.params;
 
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
-    if (!to  || !text || type !== 'message' || type !== 'private_message' || !response) return res.sendStatus(422)
-    if (response.from !== from) return res.sendStatus(404)
+    if (!to  || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
+    if (response.from !== from || !response) return res.sendStatus(404)
     
     try {
-        const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { text: text } })
+        const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { to, text, type } })
         if (result.matchedCount === 0) return res.status(404).send("Esta mensagem não existe")
         res.status(200).send("mensagem editada com sucesso")
     } catch (err) {
