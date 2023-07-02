@@ -22,13 +22,12 @@ async function deleteUsers() {
 
 
     participants.forEach( async participant => {
-        if (Date.now() - participant.lastStatus > 10000) {
-            await db.collection("participants").deleteOne({ _id: ObjectId(participant._id) })
-            
+        if (Date.now() - participant.lastStatus > 10000) {            
             await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
             text: 'saia sala...',
             type: 'status',
             time: time})
+            await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id) })
         }
         console.log (participant)
     })
