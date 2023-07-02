@@ -16,7 +16,7 @@ dotenv.config();
 setInterval(deleteUsers, 15000)
 
 async function deleteUsers() {
-
+    try{
     const participants = await db.collection("/participants").find().toArray();
     const time = (dayjs().format('HH:mm:ss'))
 
@@ -24,12 +24,19 @@ async function deleteUsers() {
     participants.forEach( async participant => {
         if (Date.now() - participant.lastStatus > 10000) {
             await db.collection("participants").deleteOne({ _id: ObjectId(participant._id) })
+            
             await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
             text: 'saia sala...',
             type: 'status',
             time: time})
         }
+        console.log (participant)
     })
+    
+    } catch (error) {
+        console.log(error)
+        res.status(500).send("Houve um problema no banco de dados!")
+    }
 }
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
@@ -91,6 +98,7 @@ app.post("/messages", async (req , res) => {
 
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status') || !user) return res.sendStatus(422);
     const response = await db.collection("participants").findOne({ name: user});
+
     console.log(response)
     if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
