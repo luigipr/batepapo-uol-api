@@ -11,14 +11,17 @@ app.use(cors())
 app.use(express.json())
 dotenv.config();
 
+let dtime
 
+setInterval(() => {
+    dtime = dayjs().format("HH:mm:ss")
+}, 1)
 
 setInterval(deleteUsers, 15000)
 
 async function deleteUsers() {
     try{
     const participants = await db.collection("/participants").find().toArray();
-    const time = (dayjs().format('HH:mm:ss'))
 
 
     participants.forEach( async participant => {
@@ -26,7 +29,7 @@ async function deleteUsers() {
             await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
             text: 'saia sala...',
             type: 'status',
-            time: time})
+            time: dtime})
             await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id) })
         }
         console.log (participant)
@@ -158,7 +161,7 @@ app.delete("/messages/:id", async (req,res) => {
     const response = await db.collection("participants").findOne({ name: user })
 
     if (!response) return res.sendStatus(401)
-    if (response.from !== from) return res.sendStatus(401)
+    if (response.from !== user) return res.sendStatus(401)
     const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
     if (message.from !== user) return res.sendStatus(401)
     if (message.deletedCount === 0) return res.status(404).send("Essa mensagem não existe!")
@@ -177,9 +180,9 @@ app.put("/messages/:id", async (req, res) => {
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
     if (response.from !== from) return res.sendStatus(401)
-    if (!response) return res.sendStatus(404)
+    //if (!response) return res.sendStatus(404)
     try {
-        const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: { to, text, type } })
+        const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: {  text } })
         if (result.matchedCount === 0) return res.status(404).send("Esta mensagem não existe")
         res.status(200).send("mensagem editada com sucesso")
     } catch (err) {
