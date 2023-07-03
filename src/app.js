@@ -105,7 +105,7 @@ app.post("/messages", async (req , res) => {
     if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
     const message = {
-        from: user, to: to, text: text, type: type, time: time
+        _id: new ObjectId(),from: user, to: to, text: text, type: type, time: time
     }
     console.log(message)
 
@@ -158,12 +158,11 @@ app.delete("/messages/:id", async (req,res) => {
     const user = req.headers.user;
     const id = req.params;
     try {    
-    const response = await db.collection("participants").findOne({ name: user })
-
-    if (!response) return res.sendStatus(401)
+    const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+    if (!response) return res.status(401).send('Esse usuário não existe')
     if (response.from !== user) return res.sendStatus(401)
     const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
-    if (message.from !== user) return res.sendStatus(401)
+    //if (message.from !== user) return res.sendStatus(401)
     if (message.deletedCount === 0) return res.status(404).send("Essa mensagem não existe!")
 
     res.status(200).send("Receita deletada com sucesso!")
