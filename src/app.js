@@ -3,6 +3,7 @@ import cors from 'cors';
 import dayjs from "dayjs";
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv"
+import { stripHtml } from "string-strip-html";
 
 
 
@@ -62,7 +63,7 @@ app.post("/participants", async (req, res) => {
     //salvar participante na collection de participantes
     const time = (dayjs().format('HH:mm:ss'))
     const message = { 
-        from: name,
+        from: (stripHtml(name).result).trim() ,
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
@@ -110,7 +111,7 @@ app.post("/messages", async (req , res) => {
     if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
     
     const message = {
-        _id: new ObjectId(),from: user, to: to, text: text, type: type, time: time
+        _id: new ObjectId(),from: user, to: to, text: (stripHtml(text).result).trim(), type: type, time: time
     }
     console.log(message)
 
@@ -184,7 +185,7 @@ app.put("/messages/:id", async (req, res) => {
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
     if (!response) return res.status(404).send('mensagem não encontrada')
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
-    if (response.from !== from) return res.sendStatus(401)
+    if (response.from !== from) return res.sendStatus(422)
     //if (!response) return res.sendStatus(404)
     try {
         const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: {  text } })
