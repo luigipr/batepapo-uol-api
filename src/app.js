@@ -31,10 +31,11 @@ async function deleteUsers() {
         
         if (Date.now() - participant.lastStatus > 10000) {           
             console.log(participant)    
-            await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
-            text: 'saia sala...',
+            const message = await db.collection("messages").insertOne({ from: participant.name, to: 'Todos',
+            text: 'sai da sala...',
             type: 'status',
             time: dtime})
+            console.log(message)
             await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id) })
             console.log('usuario deletado')
         }
@@ -163,7 +164,7 @@ app.delete("/messages/:id", async (req,res) => {
     const id = req.params;
     try {    
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
-    if (!response) return res.status(401).send('Esse usuário não existe')
+    if (!response) return res.status(404).send('Essa mensagem não existe')
     if (response.from !== user) return res.sendStatus(401)
     const message = await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
     //if (message.from !== user) return res.sendStatus(401)
@@ -181,6 +182,7 @@ app.put("/messages/:id", async (req, res) => {
     const id = req.params;
 
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+    if (!response) return res.status(404).send('mensagem não encontrada')
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
     if (response.from !== from) return res.sendStatus(401)
     //if (!response) return res.sendStatus(404)
