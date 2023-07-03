@@ -63,7 +63,7 @@ app.post("/participants", async (req, res) => {
     //salvar participante na collection de participantes
     const time = (dayjs().format('HH:mm:ss'))
     const message = { 
-        from: (stripHtml(name).result).trim() ,
+        from:  name,
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
@@ -74,7 +74,7 @@ app.post("/participants", async (req, res) => {
         console.log(user)
         if (user) {return res.status(409).send("esse participante já existe")}
         //salvar no mongodb na coleção de participantes
-        await db.collection("participants").insertOne({ name: name, lastStatus: Date.now() })
+        await db.collection("participants").insertOne({ name: (stripHtml(name).result).trim(), lastStatus: Date.now() })
         //salvar a mensagem de entrar na sala
         await db.collection("messages").insertOne(message)
         return res.sendStatus(201)
@@ -106,9 +106,9 @@ app.post("/messages", async (req , res) => {
 
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status') || !user) return res.sendStatus(422);
     const response = await db.collection("participants").findOne({ name: user});
-
     console.log(response)
-    if (!response|| response.name !== user) return res.status(422).send(err => console.log(err))
+    if (!response) return res.status(422).send('mensagem não encontrada')
+    if (response.name !== user) res.status(422).send('usuario não cadastrado')
     
     const message = {
         _id: new ObjectId(),from: user, to: to, text: (stripHtml(text).result).trim(), type: type, time: time
@@ -185,7 +185,7 @@ app.put("/messages/:id", async (req, res) => {
     const response = await db.collection("messages").findOne({ _id: new ObjectId(id) })
     if (!response) return res.status(404).send('mensagem não encontrada')
     if (!to || !text || (type !== 'message' && type !== 'private_message' && type !== 'status')) return res.sendStatus(422)
-    if (response.from !== from) return res.sendStatus(422)
+    if (response.from !== from) return res.sendStatus(401)
     //if (!response) return res.sendStatus(404)
     try {
         const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: {  text } })
