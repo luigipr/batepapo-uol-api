@@ -15,29 +15,33 @@ let dtime
 
 setInterval(() => {
     dtime = dayjs().format("HH:mm:ss")
-}, 1)
+}, 10)
 
 setInterval(deleteUsers, 15000)
 
 async function deleteUsers() {
+    
     try{
-    const participants = await db.collection("/participants").find().toArray();
-
+    const participants = await db.collection("participants").find().toArray();
+    console.log('deletando usuarios inativos...')
+    console.log(participants)
+     
 
     participants.forEach( async participant => {
-        if (Date.now() - participant.lastStatus > 10000) {            
+        
+        if (Date.now() - participant.lastStatus > 10000) {           
+            console.log(participant)    
             await db.collection("messages").insertOne({ from: participant.from, to: 'Todos',
             text: 'saia sala...',
             type: 'status',
             time: dtime})
             await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id) })
+            console.log('usuario deletado')
         }
-        console.log (participant)
     })
     
     } catch (error) {
         console.log(error)
-        res.status(500).send("Houve um problema no banco de dados!")
     }
 }
 
